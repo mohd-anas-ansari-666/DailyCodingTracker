@@ -1,5 +1,5 @@
 import sqlite3
-from datetime import date
+from datetime import datetime, date
 
 DB_NAME = "stats.db"
 
@@ -8,41 +8,36 @@ def init_db():
     c = conn.cursor()
 
     c.execute("""
-        CREATE TABLE IF NOT EXISTS daily_stats (
-            day TEXT PRIMARY KEY,
+        CREATE TABLE IF NOT EXISTS runs (
+            run_time TEXT PRIMARY KEY,
             lc_easy INTEGER,
             lc_medium INTEGER,
             lc_hard INTEGER,
             gfg_total INTEGER
         )
     """)
-
     conn.commit()
     conn.close()
 
-def save_daily(day, easy, medium, hard, gfg):
+def save_run(lc_easy, lc_medium, lc_hard, gfg_total):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
+    now = datetime.now().isoformat(timespec='seconds')
     c.execute("""
-        REPLACE INTO daily_stats VALUES (?, ?, ?, ?, ?)
-    """, (day, easy, medium, hard, gfg))
+        INSERT OR REPLACE INTO runs VALUES (?, ?, ?, ?, ?)
+    """, (now, lc_easy, lc_medium, lc_hard, gfg_total))
     conn.commit()
     conn.close()
 
-def get_previous_day(current_day):
+def get_previous_run():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     row = c.execute("""
-        SELECT * FROM daily_stats
-        WHERE day < ?
-        ORDER BY day DESC LIMIT 1
-    """, (current_day,)).fetchone()
+        SELECT * FROM runs
+        ORDER BY run_time DESC
+        LIMIT 2
+    """).fetchall()
     conn.close()
-    return row
-
-def get_all():
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    rows = c.execute("SELECT * FROM daily_stats ORDER BY day").fetchall()
-    conn.close()
-    return rows
+    if len(row) < 2:
+        return None
+    return row[1]  # second latest run = previous run
